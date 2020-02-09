@@ -1,0 +1,328 @@
+/*IMPORTATION de la base de donnees\*/
+proc import datafile="C:\Users\EDWARD\Desktop\tom\googleplaystore.csv"
+out =base 
+dbms=csv
+replace;
+delimiter=",";
+run;
+proc print data = base; 
+run;
+
+/*Recodons nos variables clees*/
+/****Regroupons VARIABLES Installs dans download*****/
+proc format ;
+value dowld
+1='[0-5,000['
+2='[5,000-10,000,000['
+3='[10,000,000-100,000,000['
+4='[100,000,000-1,000,000,000+'
+;
+data base1;
+set base;
+format download dowld.;
+if Installs in('0','0+','1+','5+','10+','50+','100+','500+','1,000+') then download=1;
+if Installs in('5,000+','10,000+','50,000+','100,000+','500,000+','1,000,000+','Free') then download=2;
+if Installs in('10,000,000+','5,000,000+','50,000,000+') then download=3;
+if Installs in('100,000,000+','500,000,000+','1,000,000,000+') then download=4;
+run;
+
+proc freq data=base1;
+table download;
+run;
+
+/**** Regroupons VARIABLES Rating dans note *****/
+proc format ;
+value not
+1='1 etoile'
+2='2 etoile'
+3='3 etoile'
+4='4 etoile'
+5='5 etoile'
+;
+data base1;
+set base1;
+format note not.;
+if Rating in('0' ,'1.1','1.2','1.3','1.4','1.5','1.6','1.7','1.8','1.9') then note='1';
+if Rating in('2','2.1','2.2','2.3','2.4','2.5','2.6','2.7','2.8','2.9') then note='2';
+if Rating in('3','3.1','3.2','3.3','3.4','3.5','3.6','3.7','3.8','3.9') then note='3';
+if Rating in('4','4.1','4.2','4.3','4.4','4.5','4.6','4.7','4.8','4.9','19') then note='4';
+if Rating ='5' then note='5';
+run;
+proc freq data=base1;
+table note;
+run;
+
+
+ 
+/***** recodification de la VARIABLES Category dans categori *****/
+
+proc format ;
+value cate
+1='Game'
+2='Business'
+3='Education'
+4='Loisirs'
+5='Service'
+;
+data base1;
+set base1;
+format categori cate.;
+if Category in('GAME','1.9') then categori='1';
+if Category in('BUSINESS','FINANCE','Finance','HOUSE_AND_HOME','SHOPPING') then categori='2';
+if Category in('ART_AND_DESIGN','BOOKS_AND_REFERENCE','BOOKS_AND_REFE' ,'COMMUNICATION','EDUCATION','ENTERTAINMENT','LIBRARIES_AND_DEMO','LIBRARIES_AND_','Books & Reference','Art & Design','MEDICAL','Medical','PRODUCTIVITY') then categori='3';
+if Category in('COMICS' ,'DATING','EVENTS','FAMILY','Casual' ,'SOCIAL','SPORTS','VIDEO_PLAYERS') then categori='4';
+if Category in('AUTO_AND_VEHICLES','AUTO_AND_VEHIC' ,'BEAUTY','FOOD_AND_DRINK' ,'HEALTH_AND_FITNESS' ,'Health & Fitness','HEALTH_AND_FIT'
+,'LIFESTYLE','MAPS_AND_NAVIGATION','Auto & Vehicles' ,'MAPS_AND_NAVIG','NEWS_AND_MAGAZINES','Personalization' ,'News & Magazines','Maps & Navigation','NEWS_AND_MAGAZ','NEWS & MAGAZINES','PARENTING','PERSONALIZATION','PERSONALIZATIO','PHOTOGRAPHY' 
+,'TOOLS' ,'TRAVEL_AND_LOCAL','Travel & Local','WEATHER') then categori='5';
+run; 
+
+proc freq data=base1;
+table categori;
+run;
+
+proc freq data=base1;
+table Reviews;
+run;
+proc freq data=base3;
+table Content_Rating;
+run;
+proc freq data=base1;
+table Price;
+run;
+/************** SUPPRESSION DES VALEURS MANQUANTES  ****************/
+
+
+DATA base2;
+SET base1;
+IF download=. or download=' ' THEN DELETE;
+RUN;
+
+DATA base3;
+SET base2;
+IF note=. or note=' ' THEN DELETE;
+run;
+
+DATA base3;
+SET base3;
+IF categori=. or categori=' ' THEN DELETE;
+run;
+
+DATA base3;
+SET base3;
+IF Reviews=. or Reviews=' ' THEN DELETE;
+run;
+
+DATA base3;
+SET base3;
+IF Content_Rating=. or Content_Rating=' ' THEN DELETE;
+run;
+
+DATA base3;
+SET base3;
+IF Price=. or Price=' ' THEN DELETE;
+run;
+/*Reduction de la base de donné en gardant les variables interressantes*/
+data base4;
+   set base3; 
+keep App Category Rating Reviews Installs Type Price Content_Rating download note categori; 
+run;
+/* Visualisation de la base bonne*/
+proc print data = base4; 
+run;
+
+/*************************************** ANALYSE  UNIVARIEE **********************************/
+
+/* Pour la variable download*/
+title'Tableau montrant les effectifs des intervalles de telechargement';
+proc freq data=base4;
+table download;
+run;
+/*/shape=cylinder width=10 patternid=midpoint*/
+
+Title'Graphique montrant les distributions des intervalles de telechargement';
+PROC gchart DATA = base4;
+ hbar download/outside=percent DISCRETE ;
+ RUN ;
+ quit; 
+/* 55.76% des applications ont un niveau de telechargement moyen c-a-d de l ordre de 5 000 a  1 000 000 de telechargement*/
+ /* Pour la variable note*/
+Title'Graphique montrant les effectifs des applications selon leur notes ';
+proc freq data=base4;
+table note;
+run;
+
+Title'Graphique montrant l effectif par note';
+proc gchart DATA = base4;
+ vbar note/ outside=percent DISCRETE ;
+ RUN ; 
+ quit;
+/* Nous constatons que 75.79% des applications ont des notes de 4 etoile*/
+
+/* Pour la variable categori*/
+ Title'Tableau des effectifs des applications selon leur categori ';
+proc freq data=base4;
+table categori;
+run;
+
+title'Visualisation des effectifs des applications selon leur categori';
+proc gchart DATA = base4;
+ pie3d categori ;
+ RUN ;
+/* Pour la variable Price*/
+proc freq data=base4;
+table Price;
+run;
+proc gchart DATA = base4;
+ pie3d Price ;
+ RUN ;
+ /*La totalité des applications retenues sont free*/
+
+/* Pour la variable Content_Rating*/
+Title'Tableau des effectifs des applications selon leur Content_Rating ';
+proc freq data=base4;
+table Content_Rating;
+run;
+
+Title'Visualisation des effectifs des applications selon leur Content_Rating ';
+proc gchart DATA = base4;
+ pie3d Content_Rating ;
+ RUN ;
+ /*Nous constatons que 
+/* Pour la variable Reviews*/
+proc means  data=base4;
+var Reviews;
+run;
+proc sgplot DATA = base4;
+ scatter Reviews ;
+ RUN ;
+
+
+/************************************** Analyse bivarié **********************************/ 
+
+ /* Pour la variable  note et download*/
+ title'Tableau de contingence de note et download';
+proc freq data=base4;
+table download*note/chisq norow nocol;
+run;
+
+/* Pour la variable note et categori*/
+proc freq data=base4;
+table categori*note/chisq norow nocol;
+run;
+
+/* Pour la variable note et Content_Rating*/
+proc freq data=base4;
+table Content_Rating*note/chisq exact fisher;
+run;
+
+/* Pour la variable categori et download*/
+proc freq data=base4;
+table categori*download/chisq norow nocol;
+run;
+proc means  data=base4;
+by note;
+var Reviews;
+run;
+
+/*Tableau conjoint bivarié*/
+ods output chisq=ki2;
+proc freq data=base4;
+table  note*download note*categori note*Content_Rating /chisq norow nocol;
+run;
+
+
+title"La desrciption de Reviews";
+proc univariate data=base4 normaltest;
+var Reviews;
+run;
+/*Normalité rejeté*/
+ods output chisq=ki2;
+proc freq data=base4;
+table  note*Reviews /chisq norow nocol;
+run;
+
+proc npar1way data=base4 wilcoxon;
+var Reviews;
+class note;
+run;
+
+/* Les variables qualitatives group *X*/
+ods rtf file="C:\Users\EDWARD\Desktop\tom\ProjetSASsortie.doc" 
+style=custom startpage=off;
+ proc tabulate data=base4;
+ class note download categori Content_Rating;
+ table download categori Content_Rating
+(Content_Rating all="TOTAL"), (note all="TOTAL") *(N*F=4. ROWPCTN="%"*f=4.1)*[style=[just=center]];
+title"Les notes des application en fonction des variables explicatives";
+run;
+
+
+
+ /*********************************************** PROGRAMME MODELE LOGISTIQUE **************************************************/
+
+/* Analyse univariée (présentation de l'OR, IC95% et P-Value */
+/* Contrairement à la régression logistique binaire, on obtient plusieurs ‘intercept’ 
+ainsi que plusieurs paramètres (un pour chaque modalité de la variable réponse, sauf pour la modalité de référence)*/
+PROC LOGISTIC DATA= base4 descending;
+class download;
+model note=download;
+run;
+
+/*Le test  global  BETA=0présente  une  p-value (Pr > ChiSq) inférieure à 0.05, 
+ce qui signifie que facteur étudié (niveau de telechargement 'download') joue un rôle dans la note de l'application.*/
+
+/*La  partie Analysis  of  Effects(Analyse  des  effets  Type  3)indique  que  l' effet  
+'download' entre en considération dans le modèle (p-value > 0.05)*/
+
+PROC LOGISTIC DATA= base4 descending;
+class categori;
+model note=categori;
+run;
+PROC LOGISTIC DATA= base4 descending;
+class Content_Rating;
+model note=Content_Rating;
+run;
+PROC LOGISTIC DATA= base4 descending;
+class Reviews;
+model note=Reviews;
+run;
+/*Le test  global  BETA=0présente  une  p-value (Pr > ChiSq) superieur à 0.05,
+ce qui signifie pas de significativité*/
+
+ proc logistic data=base4;         
+class download(ref='[0-5,000[') categori(ref='Game') Content_Rating(ref='Teen') / param=ref;  
+model note(ref='1 etoile') = download categori Content_Rating/ link=glogit;  
+run;
+AIC 12478.259 
+/*
+Plus une application est telechargé plus elle a de chance d'avoir une meilleur note
+Les applications de GAME ont plus de chances d'avoir de meilleur notes que les autres categories
+*/
+
+/*sans la variable Content_Rating*/
+proc logistic data=base4;         
+class download(ref='[0-5,000[') categori(ref='Game') / param=ref;  
+model note(ref='1 etoile') = download categori/ link=glogit;  
+run;
+
+AIC 12478.259 
+/**/
+ proc logistic data=base4;         
+class download(ref='[0-5,000[') categori(ref='Game') Content_Rating(ref='Teen') / param=ref;  
+model note(ref='1 etoile') = download categori categori*download Content_Rating/ link=glogit;  
+run;
+ReviewsReviews
+PROC LOGISTIC DATA= base4 descending;
+class download categori ;
+model note=download categori ;
+run;
+aic =12027.334
+
+/*  Adéquation du modèle (test de Hosmer et Lemeshow et courbe de ROCdownload*categori*/
+ODS GRAPHICS ON;
+PROC LOGISTIC DATA= base4 plots(only)=roc(id=obs);
+class download categori ;
+model note=download categori /lackfit;
+
+run;
+
