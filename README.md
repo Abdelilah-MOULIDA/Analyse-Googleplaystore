@@ -1,4 +1,3 @@
-# googleplaystore
-analyse d'un data set de google play store
-
-## Analyse du jeux données de googleplaystore en langage R et Python et avec SAS
+# Googleplaystore Analysis 
+Dataset: https://www.kaggle.com/lava18/google-play-store-apps
+Dashboard: https://abdelilahmoulida.shinyapps.io/DashBoard-App-Store23/
